@@ -64,7 +64,7 @@ Authenticated requests use the header `Authorization: Bearer <access token>`.
 
 ## Roadmap
 
-- [ ] Automated tests
+- [ x ] Automated tests
 - [ ] Docker and PostgreSQL
 - [ ] Password strength validation and empty-post validation
 - [ ] Deployed demo
