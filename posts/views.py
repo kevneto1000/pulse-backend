@@ -38,39 +38,39 @@ class PostViewSet(ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        queryset = Post.objects.select_related(
-            "user", "parent"
-        ).prefetch_related(
-            "comments",
-            "likes",
-            "media"
-        ).annotate(
-            like_count=Count("likes", distinct=True),
-            comment_count=Count("comments", distinct=True),
-            repost_count=Count("reposts", distinct=True),
+        def count_for(model, field):
+            return Coalesce(
+                Subquery(
+                    model.objects.filter(**{field: OuterRef("root_id")})
+                    .order_by()
+                    .values(field)
+                    .annotate(c=Count("id"))
+                    .values("c")
+                ),
+                0,
+            )
 
-            root_id=Case(
-                When(parent__isnull=True, then=F("id")),
-                default=F("parent_id"),
-                output_field=IntegerField(),
+        queryset = (
+            Post.objects.select_related("user", "parent__user")
+            .prefetch_related("media", "parent__media")
+            .annotate(
+                root_id=Case(
+                    When(parent__isnull=True, then=F("id")),
+                    default=F("parent_id"),
+                    output_field=IntegerField(),
+                )
+            )
+            .annotate(
+                like_count=count_for(Like, "post"),
+                comment_count=count_for(Comment, "post"),
+                repost_count=count_for(Post, "parent"),
             )
         )
 
         if user.is_authenticated:
-
-            like_subquery = Like.objects.filter(
-                post=OuterRef("root_id"),
-                user=user
-            )
-
-            repost_subquery = Post.objects.filter(
-                parent=OuterRef("root_id"),
-                user=user
-            )
-
             queryset = queryset.annotate(
-                is_liked=Exists(like_subquery),
-                is_reposted=Exists(repost_subquery)
+                is_liked=Exists(Like.objects.filter(post=OuterRef("root_id"), user=user)),
+                is_reposted=Exists(Post.objects.filter(parent=OuterRef("root_id"), user=user)),
             )
 
         return queryset.order_by("-created_at")
@@ -80,9 +80,9 @@ class PostViewSet(ModelViewSet):
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
         post = self.get_object()
-        user = request.user
+        target = post.parent or post
 
-        like, created = Like.objects.get_or_create(user=user, post=post)
+        like, created = Like.objects.get_or_create(user=request.user, post=target)
 
         if not created: 
             like.delete()
@@ -164,39 +164,39 @@ class CommentViewSet(ModelViewSet):
 
 
 class FollowViewSet(viewsets.ModelViewSet):
-    queryset = Follow.objects.all()
     serializer_class = FollowSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        return Follow.objects.filter(follower=self.request.user)
+    
     def perform_create(self, serializer):
         if self.request.user == serializer.validated_data["following"]:
             raise ValidationError("You cannot follow yourself.")
-
         serializer.save(follower=self.request.user)
 
-    
+
     @action(detail=False, methods=["post"])
     def toggle(self, request):
         user_to_follow_id = request.data.get("user_id")
 
         if not user_to_follow_id:
             return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             user_to_follow = User.objects.get(id=user_to_follow_id)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        
 
         if user_to_follow == request.user:
             return Response({"error": "You cannot follow yourself."}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         follow, created = Follow.objects.get_or_create(follower=request.user, following=user_to_follow)
 
         if not created:
             follow.delete()
             return Response({"message": "Unfollowed"}, status=status.HTTP_200_OK)
         return Response({"message": "Followed"}, status=status.HTTP_201_CREATED)
-        
 
-
+    
+    
