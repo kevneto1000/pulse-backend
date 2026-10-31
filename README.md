@@ -76,4 +76,4 @@ Authenticated requests use the header `Authorization: Bearer <access token>`.
 
 ## Author
 
-[Nduka Kevin] · [portfolio link: https://kevin-portfolio-mocha.vercel.app/] · [LinkedIn: https://www.linkedin.com/in/kevin-nduka-0901161b2/]
+Nduka Kevin · https://kevin-portfolio-new.vercel.app/ · https://www.linkedin.com/in/kevin-nduka-0901161b2/
