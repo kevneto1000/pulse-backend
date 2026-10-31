@@ -1,3 +1,7 @@
+**Live demo:** <https://pulse-backend-hu93.onrender.com/api/posts/>
+
+> Hosted on a free tier, so the first request after idle time can take up to a minute. Media uploads are disabled in the demo because the free host's disk isn't persistent.
+
 # Pulse Backend
 
 A social media REST API built with Django and Django REST Framework. Users can post text and media, follow each other, like, comment, and repost, and see a feed of posts from the people they follow.
@@ -66,9 +70,9 @@ Authenticated requests use the header `Authorization: Bearer <access token>`.
 
 - [ x ] Automated tests
 - [ x ] Empty-post validation
-- [ ] Docker and PostgreSQL
+- [ x ] Render and PostgreSQL
 - [ ] Password strength validation and empty-post validation
-- [ ] Deployed demo
+- [ x ] Deployed demo
 
 ## Author
 
