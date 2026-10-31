@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework import status
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q, Exists, OuterRef, Case, When, F, Value, IntegerField, Subquery
 from django.db.models.functions import Coalesce
 from .permissions import IsOwnerOrReadOnly, IsCommentOwner
@@ -129,14 +130,19 @@ class PostViewSet(ModelViewSet):
             existing_repost.delete()
             return Response({"message": "Repost removed"})
 
-        repost = Post.objects.create(
-            user=user,
-            parent=original_post,
-            content=content
-        )
+        try:
+            with transaction.atomic():
+                repost = Post.objects.create(
+                    user=user,
+                    parent=original_post,
+                    content=content
+                )
+        except IntegrityError:
+            return Response({"message": "Already reposted"}, status=status.HTTP_409_CONFLICT)
 
         serializer = self.get_serializer(repost)
         return Response(serializer.data, status=201)
+    
 
 class CommentViewSet(ModelViewSet):
     serializer_class = CommentSerializer

@@ -12,6 +12,15 @@ class Post(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.content[:30]}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields = ["user", "parent"],
+                condition=models.Q(parent__isnull=False),
+                name="unique_repost_per_user",
+            )
+        ]
     
 class PostMedia(models.Model):
     post = models.ForeignKey(Post, related_name="media", on_delete=models.CASCADE)

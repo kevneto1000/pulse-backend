@@ -67,6 +67,17 @@ class PostSerializer(serializers.ModelSerializer):
             return ParentPostSerializer(obj.parent, context=self.context).data
         return None
 
+    def validate(self, attrs):
+        request = self.context.get("request")
+        content = (attrs.get("content") or "").strip()
+        has_media = bool(request and request.FILES.getlist("media"))
+
+        if self.instance is None and not content and not has_media:
+            raise serializers.ValidationError(
+                "A post needs some text or at least one file."
+            )
+        return attrs
+
 
 class FollowSerializer(serializers.ModelSerializer):
 
